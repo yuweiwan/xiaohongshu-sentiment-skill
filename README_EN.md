@@ -11,9 +11,7 @@
 
 <br>
 
-Keyword search, post details, and comment analysis
-Complete comment analysis methodology (sarcasm detection, noise filtering, sentiment classification)
-Adapted for Xiaohongshu's anti-scraping mechanisms with rate limiting and error handling
+Comments are the real gold mine · Auto template matching · Adapted for Xiaohongshu anti-scraping
 
 [Demo](#demo) · [Install](#install) · [Project Structure](#project-structure) · [Usage](#usage) · [**中文**](README.md)
 
@@ -23,14 +21,18 @@ Adapted for Xiaohongshu's anti-scraping mechanisms with rate limiting and error 
 
 ## Demo
 
-### Sentiment Report Example
+### Sentiment Report / Research Report
+
+Templates auto-match based on monitoring object (see [templates/](templates/)):
+
+- **Sentiment Report** — single brand/product, topic/event
+- **Research Report** — competitor comparison, purchase guides
 
 ```markdown
 # [Target] Xiaohongshu Sentiment Report
 
-> Collected: 2026-04-16
-> Time Range: Last 30 days
-> Purpose: A. Broad user feedback research
+> Collected: YYYY-MM-DD
+> Time Range: XXXX
 
 ## 1. Data Overview
 - Posts: 45
@@ -45,11 +47,6 @@ Adapted for Xiaohongshu's anti-scraping mechanisms with rate limiting and error 
 | Negative | 45% | Questioning authenticity, complaining about costs |
 | Neutral | 30% | Technical questions, solution discussions |
 | Positive | 25% | Sharing real use cases |
-
-### 2.2 Core Topics
-- Topic 1: Excessive marketing, user trust erosion
-- Topic 2: High token costs, hard to scale
-- Topic 3: Cross-border e-commerce is a real application scenario
 ```
 
 ### Comment Analysis Example
@@ -101,101 +98,73 @@ xiaohongshu-sentiment-skill/
 ├── README.md                      # Chinese version
 ├── README_EN.md                   # This file
 ├── LICENSE
-├── skill.md                       # Skill entry (complete usage workflow)
+├── skill.md                       # Skill entry (principle-driven, no tables)
+├── templates/
+│   ├── 舆情报告.md                 # Brand/product sentiment template
+│   └── 调研报告.md                 # Competitor/market research template
 └── references/
-    └── xiaohongshu-patterns.md     # Platform patterns (anti-scraping, error codes)
+    └── xiaohongshu-patterns.md    # Platform patterns (anti-scraping, error codes)
 ```
 
 ---
 
 ## Usage
 
+### Core Principle
+
+**Comments are the real gold mine.** Getting posts without comments is just scratching the surface. Always read the post context first — the same phrase can mean opposite things in a praising post vs a criticizing post.
+
 ### Workflow
 
 ```
 1. Pre-check → Verify opencli availability
 2. Confirm requirements → Define target, purpose, time range
-3. Data collection → Search posts → Get details+comments (2-3s interval)
-4. Sentiment analysis → Comment analysis (sarcasm detection, noise filtering, sentiment)
-5. Output report → Standard report structure
+3. Data collection → Search → Deduplicate & sort → Get details+comments (random 1-3s interval)
+4. Comment analysis → Read post first, detect sarcasm, filter noise
+5. Output report → Auto-matched template (flexible, add/remove sections as needed)
 ```
 
-### Key Parameters
+### Anti-Scraping
 
-| Parameter | Recommended | Description |
-|-----------|-------------|-------------|
-| Search count (quick check) | 3-5 | Pre-check |
-| Search count (initial survey) | 10-20 | Single search |
-| Search count (deep research) | 30-50 | 2-3 batches, 3-5s interval |
-| Request delay (search) | 1-2s | Avoid rate limiting |
-| Request delay (details/comments) | 2-3s | Comment data is sensitive |
+- **Request frequency**: Random 1-3s interval between operations, no concurrency
+- **URL requirement**: Must use full URL from search results (with xsec_token), bare note ID is forbidden
+- **Error handling**: SECURITY_BLOCK → retry with full URL; NOTE_NOT_FOUND → skip; 3 consecutive failures → reduce frequency or change method
 
 ### Collection Commands
 
 ```bash
-# Search posts (results contain full URLs with xsec_token)
+# Search posts
 opencli xiaohongshu search "<keyword>" --limit <count> --format json
 
-# Get post details - must use full URL (with xsec_token)
+# Get post details
 opencli xiaohongshu note "<full URL>" --format json
 
 # Get comments
 opencli xiaohongshu comments "<full URL>" --limit <count> --format json
 ```
 
-### Comment Analysis Method
+### Comment Analysis: 3 Principles
 
-**Step 1: Read post before comments**
-- Get post title, content, tags first to understand context
-- Then read comments, judge real sentiment with context
-- Same phrase in a praising post vs criticizing post can mean opposite things
+**Read post before comments.** Get title, content, tags first to understand context, then read comments with that context in mind.
 
-**Step 2: Detect sarcasm**
+**Detect sarcasm.** Exaggerated tone may be irony; "made -XXX" is self-deprecation not real negative; mock flexing is mocking the original post; sarcasm needs full context.
 
-| Comment Feature | Detection | Action |
-|-----------------|-----------|--------|
-| Exaggerated tone | Overly dramatic, sarcastic sentences | Probably ironic |
-| Negative numbers/losses | "Made -XXX", "lost XXX" | Likely self-deprecation, not real negative |
-| Mock flexing | Imitating original post's exaggerated numbers | Mocking the original post |
-| Saying the opposite | Praising on surface, criticizing underneath | Need context |
+**Filter noise.** Soft ads/marketing accounts (frequent product promotion with purchase links) are tagged separately and excluded from sentiment; emotional trolls with no specific point are ignored.
 
-**Step 3: Noise filtering**
+### Report Templates
 
-| Type | Feature | Action |
-|------|---------|--------|
-| Soft ads/marketing | Frequent product promotion, purchase links | Tag separately, exclude from sentiment |
-| Pure flex posts | Showing income, achievements | Verify authenticity |
-| Trolls/provocateurs | No specific point, only emotions | Ignore |
+Auto-matched by monitoring object semantics:
 
-**Step 4: Sentiment classification**
+- Contains "vs", "comparison", "competitor", "purchase guide" → `templates/调研报告.md`
+- Single brand/product, topic/event → `templates/舆情报告.md`
 
-| Real Sentiment | Typical Expression |
-|----------------|-------------------|
-| Positive | Genuine thanks, specific approval, constructive suggestions |
-| Negative | Specific criticism, rational questioning, reasoned objection |
-| Neutral | Technical questions, cost discussions, objective statements |
-
----
-
-## Error Handling
-
-| Error Code | Meaning | Solution |
-|------------|---------|----------|
-| `SECURITY_BLOCK` | Xiaohongshu rate limiting | Retry with full URL from search results |
-| `EMPTY_RESULT` | Page loaded with no content | May require login or post is restricted |
-| `NOTE_NOT_FOUND` | Post doesn't exist or deleted | Skip this post |
-| 3 consecutive failures | Strategy issue | Reduce frequency, use different URL, or change method |
+Templates are reference structures only — adapt, extend, or create new templates based on what you actually find.
 
 ---
 
 ## Platform Patterns
 
-See [references/xiaohongshu-patterns.md](references/xiaohongshu-patterns.md), includes:
-
-- **xsec_token verification**: Every post URL contains an auth token, losing or expiring it causes `SECURITY_BLOCK`
-- **Request frequency**: Same IP concurrent requests trigger rate limiting, no concurrency allowed
-- **Delay strategy**: Search 1-2s, post details/comments 2-3s
-- **Batch deduplication**: Hot keyword search results may have duplicate posts, deduplicate by URL before batching
+See [references/xiaohongshu-patterns.md](references/xiaohongshu-patterns.md) for verified platform characteristics, effective patterns, and known pitfalls.
 
 ---
 
