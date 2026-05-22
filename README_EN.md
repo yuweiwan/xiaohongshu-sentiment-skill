@@ -114,21 +114,39 @@ xiaohongshu-sentiment-skill/
 
 **Comments are the real gold mine.** Getting posts without comments is just scratching the surface. Always read the post context first — the same phrase can mean opposite things in a praising post vs a criticizing post.
 
+⚠️ **CRITICAL: Strict Rate Limiting** ⚠️
+
+Every operation must be spaced 2-3 seconds apart. No concurrency allowed. Violating this rule will immediately trigger risk control, disconnect the Chrome debugger, and cause all subsequent operations to fail. This is a mandatory requirement with no exceptions.
+
 ### Workflow
 
 ```
 1. Pre-check → Verify opencli availability
 2. Confirm requirements → Define target, purpose, time range
-3. Data collection → Search → Deduplicate & sort → Get details+comments (random 1-3s interval)
-4. Comment analysis → Read post first, detect sarcasm, filter noise
-5. Output report → Auto-matched template (flexible, add/remove sections as needed)
+3. Search keywords → Get post list (mandatory 2-3s wait between searches)
+4. Deduplicate & sort by likes → Select high-value posts
+5. Get post details sequentially → Wait 2-3s after each post
+6. Get comments sequentially → Wait 2-3s after each post
+7. Comment analysis → Read post first, detect sarcasm, filter noise
+8. Output report → Auto-matched template (flexible, add/remove sections as needed)
 ```
+
+### Pre-flight Checklist
+
+Before starting collection, you MUST confirm:
+
+- [ ] Confirm every operation will be spaced 2-3 seconds apart
+- [ ] Confirm no concurrency / background tasks will be used
+- [ ] Confirm scripts implement `time.sleep(random.uniform(2, 3))`
+- [ ] If running commands manually, wait 3 seconds after each command
+
+**Consequences of rate limit violations**: Chrome debugger disconnect → All subsequent opencli commands fail → 10-15 minute cooldown required → May need Chrome restart or re-login.
 
 ### Anti-Scraping
 
-- **Request frequency**: Random 1-3s interval between operations, no concurrency
-- **URL requirement**: Must use full URL from search results (with xsec_token), bare note ID is forbidden
-- **Error handling**: SECURITY_BLOCK → retry with full URL; NOTE_NOT_FOUND → skip; 3 consecutive failures → reduce frequency or change method
+- **Request frequency**: Mandatory 2-3s interval between operations, no concurrency; searches also require 5-10s intervals
+- **URL requirement**: Must use full URL from search results (with xsec_token), bare note ID is forbidden; note that `search_result` URLs cannot be used directly for note/comments commands
+- **Error handling**: SECURITY_BLOCK → retry with full URL or stop and wait 10-15 minutes; NOTE_NOT_FOUND → skip; 3 consecutive failures → reduce frequency or change method
 
 ### Collection Commands
 
